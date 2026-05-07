@@ -61,7 +61,7 @@ def prediction_slider(label, min_value, max_value, value, timing=False, step=1):
     selected = st.session_state[slider_key]
 
     if timing:
-        st.caption(f"⏱️ Official Timing Format: {format_f1_time(selected)}")
+        st.caption(f"⏱️ Lap Time Format: {format_f1_time(selected)}")
     else:
         st.markdown("<div class='caption-spacer'></div>", unsafe_allow_html=True)
 
@@ -89,11 +89,31 @@ model = joblib.load(MODEL_PATH)
 model_columns = joblib.load(MODEL_COLUMNS_PATH)
 
 # =========================================================
+# CONSTRUCTOR NAME NORMALIZATION
+# =========================================================
+
+constructor_mapping = {
+    # Minor formatting consistency
+    "Alpine F1 Team": "Alpine",
+    "Haas F1 Team": "Haas",
+    "Kick Sauber": "Sauber",
+    "Lotus F1" : "Lotus",
+    "Manor Marussia": "Marussia",
+    "RB F1 Team": "Racing Bulls",
+    "Red Bull": "Red Bull Racing"
+}
+
+df["constructor_clean"] = (
+    df["constructor_name"]
+    .replace(constructor_mapping)
+)
+
+# =========================================================
 # PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
-    page_title="F1 Pit Strategy Predictions",
+    page_title="F1 Pit Stop Strategy Predictions",
     page_icon="🏎️",
     layout="wide"
 )
@@ -543,7 +563,7 @@ hr {{
 # HEADER
 # =========================================================
 
-st.title("🏎️ Formula 1 Pit Strategy Analytics")
+st.title("🏎️ Formula 1 Pit Stop Strategy Analytics")
 
 st.write("""
 Analyze Formula 1 pit stop strategies, race performance, and predictive race outcomes using machine learning.
@@ -779,85 +799,323 @@ if page == "🏁 Race Prediction":
 
 elif page == "📊 Strategy Analysis":
 
-    st.header("📊 Strategy Analysis")
 
-    col1, col2, col3 = st.columns(3)
+    st.header("📊 Strategy Analysis Dashboard")
 
-    with col1:
+
+    st.markdown(
+        """
+        Explore Formula 1 race strategy patterns, pit stop performance,
+        and constructor-level race analytics.
+        """
+    )
+
+
+    st.divider()
+
+
+    # =====================================================
+    # FILTERS
+    # =====================================================
+
+
+    filter1, filter2, filter3 = st.columns(3)
+
+    with filter1:
         selected_year = st.selectbox(
             "Season",
             sorted(df["year"].unique())
         )
 
-    with col2:
+    # Filter available constructors AFTER season is selected
+    year_df = df[df["year"] == selected_year]
+
+    available_constructors = sorted(
+        year_df["constructor_clean"].dropna().unique().tolist()
+    )
+
+    with filter2:
         selected_constructor = st.selectbox(
             "Constructor",
-            ["All"] + sorted(df["constructor_name"].dropna().unique().tolist())
+            ["All"] + available_constructors
         )
 
-    with col3:
-        selected_pit_stops = st.selectbox(
-            "Pit Stops",
-            ["All"] + sorted(df["num_pit_stops"].dropna().unique().tolist())
-        )
-
-    filtered_df = df[df["year"] == selected_year]
+    # Filter available pit stop values AFTER year + constructor
+    filtered_for_pit = year_df.copy()
 
     if selected_constructor != "All":
-        filtered_df = filtered_df[
-            filtered_df["constructor_name"] == selected_constructor
+        filtered_for_pit = filtered_for_pit[
+            filtered_for_pit["constructor_clean"] == selected_constructor
         ]
 
+    available_pit_stops = sorted(
+        filtered_for_pit["num_pit_stops"].dropna().unique().tolist()
+    )
+
+    with filter3:
+        selected_pit_stops = st.selectbox(
+            "Pit Stops",
+            ["All"] + available_pit_stops
+        )
+
+    # =====================================================
+    # FILTER DATA
+    # =====================================================
+
+
+    filtered_df = year_df.copy()
+
+
+    if selected_constructor != "All":
+
+
+        filtered_df = filtered_df[
+            filtered_df["constructor_clean"] == selected_constructor
+        ]
+
+
     if selected_pit_stops != "All":
+
+
         filtered_df = filtered_df[
             filtered_df["num_pit_stops"] == selected_pit_stops
         ]
 
-    st.subheader("Filtered Dataset")
-
-    st.dataframe(
-        filtered_df[
-            [
-                "driver_name",
-                "constructor_name",
-                "grid",
-                "positionOrder",
-                "position_change",
-                "num_pit_stops",
-                "avg_pit_duration"
-            ]
-        ].head(100)
-    )
 
     st.divider()
 
-    st.subheader("Quick Statistics")
 
-    c1, c2, c3 = st.columns(3)
+    # =====================================================
+    # QUICK STATS
+    # =====================================================
+
+
+    st.subheader("🏁 Quick Statistics")
+
+
+    c1, c2, c3, c4 = st.columns(4)
+
 
     with c1:
+
+
         st.metric(
-            "Average Position Change",
+            "Entries",
+            len(filtered_df)
+        )
+
+
+    with c2:
+
+
+        st.metric(
+            "Avg Position Change",
             round(filtered_df["position_change"].mean(), 2)
         )
 
-    with c2:
-        st.metric(
-            "Average Pit Stops",
-            round(filtered_df["num_pit_stops"].mean(), 2)
-        )
 
     with c3:
-        avg_pit_ms = filtered_df["avg_pit_duration"].mean()
-        
+
+
+        avg_pit = filtered_df["avg_pit_duration"].mean()
+
+
         st.metric(
-            "Average Pit Duration",
-            f"{avg_pit_ms:,.0f} ms"
+            "Avg Pit Duration",
+            format_f1_time(avg_pit)
         )
-        
-        st.caption(
-            f"⏱️ Official Timing Format: {format_f1_time(avg_pit_ms)}"
+
+
+    with c4:
+
+
+        avg_lap = filtered_df["avg_lap_time"].mean()
+
+
+        st.metric(
+            "Avg Lap Time",
+            format_f1_time(avg_lap)
         )
+
+
+    st.divider()
+
+
+    # =====================================================
+    # POSITION CHANGE LEADERS
+    # =====================================================
+
+
+    left, right = st.columns(2)
+
+
+    with left:
+
+
+        st.subheader("📈 Biggest Position Gainers")
+
+
+        gainers = filtered_df.sort_values(
+            by="position_change",
+            ascending=False
+        )[
+            [
+                "driver_name",
+                "constructor_clean",
+                "grid",
+                "positionOrder",
+                "position_change"
+            ]
+        ].head(10)
+
+
+        st.dataframe(
+            gainers,
+            use_container_width=True
+        )
+
+
+    with right:
+
+
+        st.subheader("📉 Biggest Position Losers")
+
+
+        losers = filtered_df.sort_values(
+            by="position_change",
+            ascending=True
+        )[
+            [
+                "driver_name",
+                "constructor_clean",
+                "grid",
+                "positionOrder",
+                "position_change"
+            ]
+        ].head(10)
+
+
+        st.dataframe(
+            losers,
+            use_container_width=True
+        )
+
+
+    st.divider()
+
+
+    # =====================================================
+    # CONSTRUCTOR ANALYTICS
+    # =====================================================
+
+
+    st.subheader("🏎️ Constructor Strategy Comparison")
+
+
+    constructor_summary = (
+        filtered_df.groupby("constructor_clean")
+        .agg({
+            "position_change": "mean",
+            "avg_pit_duration": "mean",
+            "avg_lap_time": "mean",
+            "num_pit_stops": "mean"
+        })
+        .reset_index()
+    )
+
+
+    constructor_summary.columns = [
+        "Constructor",
+        "Avg Position Change",
+        "Avg Pit Duration",
+        "Avg Lap Time",
+        "Avg Pit Stops"
+    ]
+
+
+    st.dataframe(
+        constructor_summary,
+        use_container_width=True
+    )
+
+
+    st.divider()
+
+
+    # =====================================================
+    # VISUALIZATIONS
+    # =====================================================
+
+
+    st.subheader("📊 Strategy Visualizations")
+
+
+    viz1, viz2 = st.columns(2)
+
+
+    with viz1:
+
+
+        st.markdown("#### Average Pit Duration by Constructor")
+
+
+        pit_chart = (
+            filtered_df.groupby("constructor_clean")[
+                "avg_pit_duration"
+            ]
+            .mean()
+            .sort_values()
+        )
+
+
+        st.bar_chart(pit_chart)
+
+
+    with viz2:
+
+
+        st.markdown("#### Average Position Change by Constructor")
+
+
+        pos_chart = (
+            filtered_df.groupby("constructor_clean")[
+                "position_change"
+            ]
+            .mean()
+            .sort_values()
+        )
+
+
+        st.bar_chart(pos_chart)
+
+
+    st.divider()
+
+
+    # =====================================================
+    # FILTERED DATASET
+    # =====================================================
+
+
+    st.subheader("🗂️ Filtered Dataset Preview")
+
+
+    preview_columns = [
+        "driver_name",
+        "constructor_clean",
+        "grid",
+        "positionOrder",
+        "position_change",
+        "num_pit_stops",
+        "avg_pit_duration",
+        "avg_lap_time"
+    ]
+
+
+    st.dataframe(
+        filtered_df[preview_columns].head(100),
+        use_container_width=True
+    )
 
 # =========================================================
 # PAGE: MODEL PERFORMANCE
@@ -979,36 +1237,109 @@ elif page == "ℹ️ About Project":
 
     st.header("ℹ️ About This Project")
 
-    st.write("""
-    ### Research Question
+    st.markdown("""
+    ### 🏁 Research Question
 
-    To what extent can pit stop strategy and race-performance variables
-    predict position changes during a Formula 1 race?
+    To what extent can Formula 1 pit stop strategy and race-performance variables
+    predict a driver's finishing position delta?
 
-    ### Dataset
+    In this project, **finishing position delta** is defined as:
 
-    Historical Formula 1 race data including:
-    - pit stops
-    - qualifying results
-    - lap times
-    - constructors
-    - race outcomes
+    `Starting Grid Position - Final Finishing Position`
 
-    ### Machine Learning
+    Positive values indicate that a driver gained positions during the race, while
+    negative values indicate that a driver lost positions.
 
-    Models Used:
+    ---
+
+    ### 📊 Dataset
+
+    This project uses historical Formula 1 race data from the Kaggle Formula 1
+    World Championship dataset. The final modeling dataset combines:
+
+    - Race results
+    - Qualifying results
+    - Pit stop records
+    - Lap timing data
+    - Constructor information
+    - Driver information
+
+    The data was cleaned, merged, and engineered into a unified race-level dataset
+    for machine learning and strategy analysis.
+
+    ---
+
+    ### 🛠️ Feature Engineering
+
+    The model uses race strategy and performance features such as:
+
+    - Starting grid position
+    - Qualifying position
+    - Number of pit stops
+    - First, last, and average pit lap
+    - Average and total pit stop duration
+    - Average lap time
+    - Fastest lap time
+    - Lap time consistency
+    - Total laps completed
+
+    Constructor names were also cleaned to reduce naming inconsistencies while
+    preserving historical team identities where appropriate.
+
+    ---
+
+    ### 🤖 Machine Learning Models
+
+    Four regression models were trained and compared:
+
     - Linear Regression
-    - Random Forest Regressor
+    - Decision Tree Regression
+    - Random Forest Regression
+    - Gradient Boosting Regression
 
-    ### Main Finding
+    The models were evaluated using:
 
-    Qualifying position strongly influences race outcomes,
-    but pit strategy variables provide substantial additional
-    predictive power.
+    - Mean Absolute Error (MAE)
+    - Root Mean Squared Error (RMSE)
+    - R² Score
+
+    Random Forest Regression achieved the strongest overall performance and is
+    used as the primary prediction model in this dashboard.
+
+    ---
+
+    ### 🧠 Main Finding
+
+    The results suggest that Formula 1 race outcomes are influenced by nonlinear
+    interactions between qualifying performance, pit stop execution, lap pace, and
+    race consistency.
+
+    While no model can perfectly predict race outcomes due to unpredictable factors
+    such as weather, safety cars, mechanical failures, and race incidents, the
+    dashboard demonstrates that historical strategy data contains meaningful
+    predictive information.
+
+    ---
+
+    ### 🖥️ Dashboard Purpose
+
+    This Streamlit dashboard allows users to:
+
+    - Simulate race strategy inputs
+    - Predict finishing position delta
+    - Compare model performance
+    - Analyze constructor-level strategy trends
+    - Explore historical race-performance patterns
+
+    The goal is to turn the machine learning pipeline into an interactive tool for
+    Formula 1 strategy exploration.
     """)
 
     st.divider()
 
     st.subheader("GitHub Repository")
 
-    st.code("https://github.com/thomaschung1/F1-Pit-Strategy-Analysis")
+    st.link_button(
+        "Open GitHub Repository",
+        "https://github.com/thomaschung1/F1-Pit-Strategy-Analysis"
+    )
