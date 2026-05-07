@@ -1,67 +1,67 @@
 feature,importance
-grid,0.3223772103972348
-total_laps_completed,0.20515004561607475
-total_pit_duration,0.0572488909793102
-avg_pit_duration,0.04983870227992867
-lap_time_std,0.043295615786267325
-last_pit_lap,0.043280089163317374
-first_pit_lap,0.037155606375034594
-avg_pit_lap,0.03239379340530385
-fastest_lap_time,0.03006540001950639
-avg_lap_time,0.028860971032699374
-qualifying_position,0.025237846347763705
-num_pit_stops,0.019196154830608887
-constructor_name_Red Bull,0.01571863111796698
-constructor_name_Mercedes,0.010166048147910825
-constructor_name_Ferrari,0.009160718835455581
-constructor_name_Haas F1 Team,0.006051794311806438
-circuit_name_Suzuka Circuit,0.004412031051288537
-constructor_name_Toro Rosso,0.004043451550844035
-constructor_name_McLaren,0.004001180752196849
-constructor_name_Williams,0.0030544178994233616
-circuit_name_Bahrain International Circuit,0.0029285213025284835
-constructor_name_Lotus F1,0.0024397068062035586
-circuit_name_Istanbul Park,0.001960344420909442
-constructor_name_Alpine F1 Team,0.0018440824822589686
-circuit_name_Hockenheimring,0.0017917667115058028
-constructor_name_Sauber,0.001791729405310215
-circuit_name_Silverstone Circuit,0.0017869952932493666
-constructor_name_Force India,0.001701516027480391
-circuit_name_Valencia Street Circuit,0.0016986282469955453
-circuit_name_Hungaroring,0.0016859886267963477
-circuit_name_Autódromo Hermanos Rodríguez,0.0015959618452575535
-constructor_name_Renault,0.001593913651791673
-circuit_name_Autódromo José Carlos Pace,0.0015209692376745088
-constructor_name_Aston Martin,0.0014880258797981875
-circuit_name_Baku City Circuit,0.0014395183832462259
-circuit_name_Circuit de Barcelona-Catalunya,0.0013635265139817663
-circuit_name_Circuit Gilles Villeneuve,0.001345142000538052
-circuit_name_Autodromo Nazionale di Monza,0.0013279727797687942
-circuit_name_Circuit of the Americas,0.0013243002494131332
-circuit_name_Circuit de Monaco,0.001321363651930569
-constructor_name_Racing Point,0.0011937352517326764
-constructor_name_AlphaTauri,0.0010249676730839405
-circuit_name_Yas Marina Circuit,0.0009629653424927148
-circuit_name_Sepang International Circuit,0.000958668933825597
-circuit_name_Marina Bay Street Circuit,0.000923252027867587
-circuit_name_Circuit de Spa-Francorchamps,0.0008780709913859253
-circuit_name_Shanghai International Circuit,0.0008155757200657569
-constructor_name_RB F1 Team,0.0007535300444597775
-circuit_name_Losail International Circuit,0.0006962923498009393
-circuit_name_Circuit Park Zandvoort,0.000645241003793545
-circuit_name_Las Vegas Strip Street Circuit,0.0006155048341008742
-circuit_name_Korean International Circuit,0.0006040565932305684
-circuit_name_Sochi Autodrom,0.0005925667270702365
-circuit_name_Buddh International Circuit,0.000577931183353446
-circuit_name_Autodromo Enzo e Dino Ferrari,0.0005436576998596204
-circuit_name_Miami International Autodrome,0.0004857110973198784
-circuit_name_Red Bull Ring,0.00047666182254032353
-circuit_name_Circuit Paul Ricard,0.0004394031564615731
-constructor_name_Caterham,0.0003849188806069715
-circuit_name_Autódromo Internacional do Algarve,0.00036058435434590153
-circuit_name_Autodromo Internazionale del Mugello,0.0003486381898201064
-circuit_name_Nürburgring,0.00028117340054293423
-constructor_name_Marussia,0.0002533107428468167
-circuit_name_Jeddah Corniche Circuit,0.0002484859519125866
-constructor_name_Manor Marussia,0.0001534579991771546
-constructor_name_HRT,0.00012306461172132538
+grid,0.323093353791318
+total_laps_completed,0.19934216293208937
+avg_pit_lap,0.05849170490660802
+total_pit_duration,0.05846406269936661
+last_pit_lap,0.04916348386212666
+avg_pit_duration,0.04458202677677819
+lap_time_std,0.03865146169910893
+fastest_lap_time,0.029537217280217333
+first_pit_lap,0.029174241460566977
+avg_lap_time,0.02870169194881589
+qualifying_position,0.027349901236064462
+constructor_name_Red Bull,0.015196317578924997
+num_pit_stops,0.012413015706358502
+constructor_name_Ferrari,0.009629097738023453
+constructor_name_Mercedes,0.009329139515378008
+constructor_name_Haas F1 Team,0.004063640048040183
+constructor_name_McLaren,0.0038817251796809007
+constructor_name_Toro Rosso,0.0036827339727601516
+circuit_name_Bahrain International Circuit,0.0032588754408896313
+constructor_name_Williams,0.00320232111369617
+constructor_name_Lotus F1,0.002693588776021561
+circuit_name_Circuit of the Americas,0.002538010368295814
+constructor_name_Force India,0.0023915210426468814
+circuit_name_Autódromo José Carlos Pace,0.002105973068896406
+constructor_name_Alpine F1 Team,0.001978209220542719
+constructor_name_Sauber,0.0019396529706292359
+circuit_name_Valencia Street Circuit,0.001911458604603433
+circuit_name_Circuit de Spa-Francorchamps,0.0018674058611991323
+circuit_name_Hockenheimring,0.0018010774130098846
+circuit_name_Hungaroring,0.0015983531993354096
+circuit_name_Istanbul Park,0.0015642855981440706
+constructor_name_Renault,0.0015296027855661578
+circuit_name_Circuit de Monaco,0.0014088599140681364
+circuit_name_Silverstone Circuit,0.001341726029038763
+circuit_name_Circuit Gilles Villeneuve,0.0013097425577512896
+circuit_name_Yas Marina Circuit,0.001288389934200744
+circuit_name_Shanghai International Circuit,0.0012623872267488933
+circuit_name_Circuit de Barcelona-Catalunya,0.0011913524398746971
+circuit_name_Autódromo Hermanos Rodríguez,0.0010955365308818119
+constructor_name_Racing Point,0.0010854512750316629
+circuit_name_Baku City Circuit,0.001019131903230498
+constructor_name_AlphaTauri,0.001013808112064777
+circuit_name_Autodromo Nazionale di Monza,0.0009893707096571558
+circuit_name_Marina Bay Street Circuit,0.0009066860427528894
+circuit_name_Buddh International Circuit,0.0008936287351319173
+constructor_name_Aston Martin,0.0008921309691858749
+circuit_name_Suzuka Circuit,0.0008119161754722736
+circuit_name_Sepang International Circuit,0.0008087137848858726
+circuit_name_Sochi Autodrom,0.0007523526253306892
+constructor_name_RB F1 Team,0.0007357349642289056
+circuit_name_Miami International Autodrome,0.0006318309025115894
+circuit_name_Losail International Circuit,0.0005824747890054422
+circuit_name_Korean International Circuit,0.0005820805159577594
+circuit_name_Circuit Park Zandvoort,0.0005304576700779303
+circuit_name_Red Bull Ring,0.0005192518085294732
+circuit_name_Las Vegas Strip Street Circuit,0.0004946351020851469
+circuit_name_Autodromo Enzo e Dino Ferrari,0.0004803743509527637
+circuit_name_Circuit Paul Ricard,0.00037045300719570657
+constructor_name_Marussia,0.0003569012929593025
+circuit_name_Autodromo Internazionale del Mugello,0.0003120203996342618
+constructor_name_Manor Marussia,0.00029754476020616154
+circuit_name_Nürburgring,0.0002614286296385898
+constructor_name_Caterham,0.00022015589352089533
+circuit_name_Autódromo Internacional do Algarve,0.00018494292089331238
+constructor_name_HRT,0.00012292485490114177
+circuit_name_Jeddah Corniche Circuit,0.00011828937669058694

@@ -3,6 +3,74 @@ import pandas as pd
 import joblib
 from pathlib import Path
 
+def format_f1_time(ms):
+    ms = int(round(ms))
+    total_seconds = ms / 1000
+    minutes = int(total_seconds // 60)
+    seconds = int(total_seconds % 60)
+    milliseconds = int(ms % 1000)
+    return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
+
+def prediction_slider(label, min_value, max_value, value, timing=False, step=1):
+    state_key = (
+        label.replace(" ", "_")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("/", "_")
+        .lower()
+    )
+
+    slider_key = f"{state_key}_slider"
+    input_key = f"{state_key}_input"
+
+    if slider_key not in st.session_state:
+        st.session_state[slider_key] = value
+
+    if input_key not in st.session_state:
+        st.session_state[input_key] = value
+
+    def slider_changed():
+        st.session_state[input_key] = st.session_state[slider_key]
+
+    def input_changed():
+        st.session_state[slider_key] = st.session_state[input_key]
+
+    slider_col, input_col = st.columns([4, 1])
+
+    with slider_col:
+        st.slider(
+            label,
+            min_value=min_value,
+            max_value=max_value,
+            step=step,
+            key=slider_key,
+            on_change=slider_changed
+        )
+
+    with input_col:
+        st.number_input(
+            " ",
+            min_value=min_value,
+            max_value=max_value,
+            step=step,
+            key=input_key,
+            label_visibility="collapsed",
+            on_change=input_changed
+        )
+
+    selected = st.session_state[slider_key]
+
+    if timing:
+        st.caption(f"⏱️ Official Timing Format: {format_f1_time(selected)}")
+    else:
+        st.markdown("<div class='caption-spacer'></div>", unsafe_allow_html=True)
+
+    return selected
+
+# =========================================================
+# PATHS
+# =========================================================
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 DATA_PATH = BASE_DIR / "data" / "processed" / "f1_pit_strategy_model_data.csv"
@@ -10,112 +78,937 @@ MODEL_PATH = BASE_DIR / "models" / "random_forest_model.pkl"
 MODEL_COLUMNS_PATH = BASE_DIR / "models" / "model_columns.pkl"
 FIGURES_DIR = BASE_DIR / "figures"
 
+# =========================================================
+# LOAD DATA
+# =========================================================
+
+df = pd.read_csv(DATA_PATH)
+
+model = joblib.load(MODEL_PATH)
+
+model_columns = joblib.load(MODEL_COLUMNS_PATH)
+
+# =========================================================
+# PAGE CONFIG
+# =========================================================
+
 st.set_page_config(
-    page_title="F1 Pit Strategy Analysis",
+    page_title="F1 Pit Strategy Predictions",
+    page_icon="🏎️",
     layout="wide"
 )
 
-st.title("Formula 1 Pit Strategy Analysis")
+# =========================================================
+# TEAM THEMES
+# =========================================================
 
-st.write("""
-This dashboard explores how Formula 1 pit stop strategy relates to race performance.
-The project uses historical race, qualifying, lap time, and pit stop data to predict
-position change during a race.
-""")
+TEAM_THEMES = {
+    "Default": {
+        "primary": "#E10600",
+        "secondary": "#FFFFFF",
+        "background": "#0E1117"
+    },
+    "Alpine": {
+        "primary": "#479FE2",
+        "secondary": "#FD4BC7",
+        "background": "#00101F"
+    },
+    "Aston Martin": {
+        "primary": "#4B9774",
+        "secondary": "#CEDC00",
+        "background": "#001A16"
+    },
+    "Audi": {
+        "primary": "#EB4526",
+        "secondary": "#FFFFFF",
+        "background": "#150500"
+    },
+    "Cadillac": {
+        "primary": "#AAAADD",
+        "secondary": "#FFFFFF",
+        "background": "#111122"
+    },
+    "Ferrari": {
+        "primary": "#D52E37",
+        "secondary": "#FFF200",
+        "background": "#160000"
+    },
+    "Haas": {
+        "primary": "#DFE1E2",
+        "secondary": "#E10600",
+        "background": "#111111"
+    },
+    "McLaren": {
+        "primary": "#ef8733",
+        "secondary": "#FFFFFF",
+        "background": "#1A0D00"
+    },
+    "Mercedes": {
+        "primary": "#75F1D3",
+        "secondary": "#FFFFFF",
+        "background": "#001F1F"
+    },
+    "Red Bull Racing": {
+        "primary": "#4570C0",
+        "secondary": "#FFCC00",
+        "background": "#050A30"
+    },
+    "Visa Cash App Racing Bulls": {
+        "primary": "#7091f8",
+        "secondary": "#FFFFFF",
+        "background": "#050A25"
+    },
+    "Williams": {
+        "primary": "#3267D4",
+        "secondary": "#FFFFFF",
+        "background": "#000A1F"
+    }
+}
 
-df = pd.read_csv(DATA_PATH)
-model = joblib.load(MODEL_PATH)
-model_columns = joblib.load(MODEL_COLUMNS_PATH)
+# =========================================================
+# SIDEBAR
+# =========================================================
 
-st.subheader("Dataset Preview")
-st.dataframe(df.head())
+# -----------------------------
+# Session State Defaults
+# -----------------------------
 
-st.subheader("Key Dataset Information")
-col1, col2, col3 = st.columns(3)
+if "page" not in st.session_state:
+    st.session_state.page = "🏁 Race Prediction"
 
-with col1:
-    st.metric("Rows", df.shape[0])
+if "theme_choice" not in st.session_state:
+    st.session_state.theme_choice = "Default"
 
-with col2:
-    st.metric("Columns", df.shape[1])
+# -----------------------------
+# Navigation
+# -----------------------------
 
-with col3:
-    st.metric("Seasons", f"{int(df['year'].min())}–{int(df['year'].max())}")
-
-st.subheader("Saved Visualizations")
-
-figures = [
-    "position_change_distribution.png",
-    "pit_stops_vs_position_change.png",
-    "qualifying_vs_position_change.png",
-    "lap_time_vs_position_change.png",
-    "feature_importance.png",
-    "model_comparison.png"
+nav_items = [
+    "🏁 Race Prediction",
+    "📊 Strategy Analysis",
+    "🤖 Model Performance",
+    "ℹ️ About Project"
 ]
 
-for fig in figures:
-    fig_path = FIGURES_DIR / fig
-    if fig_path.exists():
-        st.image(str(fig_path), caption=fig.replace("_", " ").replace(".png", "").title())
-        
-st.divider()
+for item in nav_items:
+    is_active = st.session_state.page == item
 
-st.subheader("Interactive Race Outcome Prediction")
+    if st.sidebar.button(
+        item,
+        key=f"nav_{item}",
+        width="stretch",
+        type="primary" if is_active else "secondary"
+    ):
+        st.session_state.page = item
+        st.rerun()
 
-st.write("""
-Use the controls below to simulate race conditions and predict how many positions
-a driver is expected to gain or lose during a race.
-""")
+page = st.session_state.page
 
-col1, col2 = st.columns(2)
+# -----------------------------
+# Theme Selector
+# -----------------------------
 
-with col1:
-    grid = st.slider("Starting Grid Position", 1, 20, 10)
-    qualifying_position = st.slider("Qualifying Position", 1, 20, 10)
-    num_pit_stops = st.slider("Number of Pit Stops", 0, 5, 2)
-    first_pit_lap = st.slider("First Pit Lap", 0, 80, 18)
-    last_pit_lap = st.slider("Last Pit Lap", 0, 80, 45)
-    avg_pit_lap = st.slider("Average Pit Lap", 0, 80, 32)
+st.sidebar.divider()
 
-with col2:
-    avg_pit_duration = st.slider("Average Pit Duration (ms)", 15000, 40000, 22000)
-    total_pit_duration = st.slider("Total Pit Duration (ms)", 0, 150000, 45000)
-    avg_lap_time = st.slider("Average Lap Time (ms)", 70000, 130000, 90000)
-    lap_time_std = st.slider("Lap Time Standard Deviation", 0, 20000, 3000)
-    fastest_lap_time = st.slider("Fastest Lap Time (ms)", 60000, 120000, 85000)
-    total_laps_completed = st.slider("Total Laps Completed", 0, 80, 55)
+theme_options = [
+    "Default",
+    "Alpine",
+    "Aston Martin",
+    "Audi",
+    "Cadillac",
+    "Ferrari",
+    "Haas",
+    "McLaren",
+    "Mercedes",
+    "Red Bull Racing",
+    "Visa Cash App Racing Bulls",
+    "Williams"
+]
 
-input_data = pd.DataFrame({
-    "grid": [grid],
-    "qualifying_position": [qualifying_position],
-    "num_pit_stops": [num_pit_stops],
-    "first_pit_lap": [first_pit_lap],
-    "last_pit_lap": [last_pit_lap],
-    "avg_pit_lap": [avg_pit_lap],
-    "avg_pit_duration": [avg_pit_duration],
-    "total_pit_duration": [total_pit_duration],
-    "avg_lap_time": [avg_lap_time],
-    "lap_time_std": [lap_time_std],
-    "fastest_lap_time": [fastest_lap_time],
-    "total_laps_completed": [total_laps_completed]
-})
-
-for col in model_columns:
-    if col not in input_data.columns:
-        input_data[col] = 0
-
-input_data = input_data[model_columns]
-
-prediction = model.predict(input_data)[0]
-
-st.metric(
-    "Predicted Position Change",
-    round(prediction, 2)
+theme_choice = st.sidebar.selectbox(
+    "Choose Your F1 Team Livery Theme",
+    theme_options,
+    index=theme_options.index(st.session_state.theme_choice),
+    key="theme_selectbox"
 )
 
-if prediction > 0:
-    st.success(f"The model predicts the driver may gain about {round(prediction, 2)} positions.")
-elif prediction < 0:
-    st.error(f"The model predicts the driver may lose about {abs(round(prediction, 2))} positions.")
-else:
-    st.info("The model predicts no major position change.")
+if theme_choice != st.session_state.theme_choice:
+    st.session_state.theme_choice = theme_choice
+    st.rerun()
+
+theme = TEAM_THEMES[st.session_state.theme_choice]
+
+# =========================================================
+# CUSTOM CSS
+# =========================================================
+
+st.markdown(f"""
+<style>
+
+/* ================================
+   MAIN APP
+================================ */
+
+.stApp {{
+    background-color: {theme['background']};
+    color: white;
+}}
+
+/* ================================
+   SIDEBAR
+================================ */
+
+section[data-testid="stSidebar"] {{
+    background: linear-gradient(
+        180deg,
+        #151722 0%,
+        #11131D 100%
+    );
+    border-right: 1px solid {theme['primary']};
+}}
+
+/* ================================
+   SIDEBAR NAV BUTTONS
+================================ */
+
+section[data-testid="stSidebar"] button {{
+    text-align: left !important;
+    justify-content: flex-start !important;
+
+    border-radius: 10px !important;
+
+    margin-bottom: 8px !important;
+
+    font-weight: 700 !important;
+
+    background-color: transparent !important;
+
+    color: #EAEAEA !important;
+
+    border: 1px solid transparent !important;
+
+    transition: all 0.15s ease-in-out !important;
+}}
+
+/* ACTIVE PAGE */
+
+section[data-testid="stSidebar"] button[kind="primary"] {{
+
+    background-color: rgba(255,255,255,0.04) !important;
+
+    color: #FFFFFF !important;
+
+    border: 2px solid {theme['primary']} !important;
+
+    box-shadow:
+        0 0 12px rgba(255,255,255,0.08),
+        0 0 6px {theme['secondary']} !important;
+}}
+
+/* HOVER EFFECT */
+
+section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
+
+    background-color: rgba(255,255,255,0.08) !important;
+
+    color: {theme['primary']} !important;
+
+    border: 1px solid {theme['primary']} !important;
+}}
+
+/* ================================
+   SIDEBAR TEXT
+================================ */
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] label {{
+    color: white !important;
+}}
+
+/* ================================
+   SIDEBAR COLLAPSE ARROW
+================================ */
+
+[data-testid="collapsedControl"] {{
+    color: {theme['secondary']} !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}}
+
+[data-testid="collapsedControl"] svg {{
+    fill: {theme['secondary']} !important;
+    color: {theme['secondary']} !important;
+    opacity: 1 !important;
+}}
+
+/* ================================
+   HEADINGS
+================================ */
+
+h1, h2, h3 {{
+    color: {theme['primary']};
+}}
+
+/* ================================
+   METRIC CARDS
+================================ */
+
+div[data-testid="metric-container"] {{
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,0.06),
+            rgba(255,255,255,0.02)
+        );
+
+    border: 1px solid {theme['primary']};
+
+    padding: 16px;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 0 18px rgba(0,0,0,0.35);
+
+    transition: 0.2s ease-in-out;
+}}
+
+div[data-testid="metric-container"]:hover {{
+
+    transform: translateY(-2px);
+
+    border: 1px solid {theme['secondary']};
+}}
+
+[data-testid="stMetricValue"] {{
+    color: {theme['primary']};
+}}
+
+/* ================================
+   SELECTBOXES / DROPDOWNS
+================================ */
+
+div[data-baseweb="select"] > div {{
+
+    background-color: #242633;
+
+    border: 1px solid {theme['primary']};
+
+    color: white;
+
+    border-radius: 10px;
+}}
+
+div[data-baseweb="select"] svg {{
+    fill: {theme['secondary']} !important;
+    color: {theme['secondary']} !important;
+    opacity: 1 !important;
+}}
+
+[data-testid="stSelectbox"] svg,
+[data-testid="stMultiSelect"] svg {{
+    fill: {theme['secondary']} !important;
+    color: {theme['secondary']} !important;
+    opacity: 1 !important;
+}}
+
+/* ================================
+   SLIDERS
+================================ */
+
+.stSlider [data-baseweb="slider"] {{
+    padding-top: 12px;
+    padding-bottom: 12px;
+}}
+
+/* Full track glow layer */
+
+.stSlider [data-baseweb="slider"] > div > div {{
+    background: linear-gradient(
+        90deg,
+        {theme['primary']} 0%,
+        {theme['primary']} 45%,
+        {theme['secondary']} 100%
+    ) !important;
+
+    height: 6px !important;
+    border-radius: 999px !important;
+
+    box-shadow:
+        0 0 10px {theme['primary']},
+        0 0 18px {theme['secondary']} !important;
+}}
+
+/* Force internal progress layers away from default red */
+
+.stSlider [data-baseweb="slider"] div {{
+    border-color: {theme['primary']} !important;
+}}
+
+/* Slider knob */
+
+.stSlider [role="slider"] {{
+    background-color: {theme['secondary']} !important;
+    border: 2px solid {theme['primary']} !important;
+
+    box-shadow:
+        0 0 10px {theme['secondary']},
+        0 0 18px {theme['primary']},
+        0 0 24px rgba(255,255,255,0.20) !important;
+}}
+
+.stSlider [role="slider"]:hover {{
+    transform: scale(1.08);
+
+    box-shadow:
+        0 0 14px {theme['secondary']},
+        0 0 26px {theme['primary']},
+        0 0 34px rgba(255,255,255,0.25) !important;
+}}
+
+/* Slider value labels */
+
+.stSlider [data-testid="stThumbValue"] {{
+    color: {theme['primary']} !important;
+    font-weight: 800 !important;
+}}
+
+.stSlider label {{
+    color: white !important;
+    font-weight: 600;
+}}
+
+.caption-spacer {{
+    height: 38.5px;
+}}
+
+/* ================================
+   TABLES
+================================ */
+
+[data-testid="stDataFrame"] {{
+    border: 1px solid {theme['primary']};
+    border-radius: 12px;
+    overflow: hidden;
+}}
+
+/* ================================
+   DIVIDERS
+================================ */
+
+hr {{
+    border-color: {theme['primary']};
+}}
+
+/* ================================
+   GENERAL BUTTONS
+================================ */
+
+.stButton>button {{
+
+    border-radius: 10px;
+
+    font-weight: 700;
+
+    border: 1px solid {theme['primary']};
+
+    background-color: rgba(255,255,255,0.04);
+
+    color: white;
+}}
+
+.stButton>button:hover {{
+
+    border: 1px solid {theme['secondary']};
+
+    color: {theme['primary']};
+}}
+
+[data-testid="stNumberInput"] input {{
+    background-color: #242633 !important;
+    color: white !important;
+    border: 1px solid {theme['primary']} !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+}}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.title("🏎️ Formula 1 Pit Strategy Analytics")
+
+st.write("""
+Analyze Formula 1 pit stop strategies, race performance, and predictive race outcomes using machine learning.
+""")
+
+# =========================================================
+# PAGE: RACE PREDICTION
+# =========================================================
+
+
+if page == "🏁 Race Prediction":
+
+
+    METRICS_PATH = BASE_DIR / "data" / "processed" / "model_metrics.csv"
+
+
+    metrics_df = pd.read_csv(METRICS_PATH)
+
+
+    best_model_row = metrics_df.sort_values(
+        by="R2",
+        ascending=False
+    ).iloc[0]
+
+
+    st.header("🏁 Race Prediction")
+
+
+    col1, col2, col3, col4 = st.columns(4)
+
+
+    with col1:
+        st.metric("Race Entries", len(df))
+
+
+    with col2:
+        st.metric(
+            "Seasons",
+            f"{df['year'].min()}–{df['year'].max()}"
+        )
+
+
+    with col3:
+        st.metric(
+            "Best Model",
+            best_model_row["Model"]
+        )
+
+
+    with col4:
+        st.metric(
+            "R² Score",
+            round(best_model_row["R2"], 2)
+        )
+
+
+    st.divider()
+
+
+    left, right = st.columns(2)
+
+
+    with left:
+
+
+        grid = prediction_slider(
+            "Starting Grid Position",
+            1,
+            20,
+            10
+        )
+
+
+        qualifying_position = prediction_slider(
+            "Qualifying Position",
+            1,
+            20,
+            10
+        )
+
+
+        num_pit_stops = prediction_slider(
+            "Number of Pit Stops",
+            0,
+            5,
+            2
+        )
+
+
+        first_pit_lap = prediction_slider(
+            "First Pit Lap",
+            1,
+            80,
+            18
+        )
+
+
+        last_pit_lap = prediction_slider(
+            "Last Pit Lap",
+            1,
+            80,
+            45
+        )
+
+
+        avg_pit_lap = prediction_slider(
+            "Average Pit Lap",
+            1,
+            80,
+            32
+        )
+
+
+    with right:
+
+
+        avg_pit_duration = prediction_slider(
+            "Average Pit Duration (ms)",
+            15000,
+            40000,
+            22000,
+            timing=True
+        )
+
+
+        total_pit_duration = prediction_slider(
+            "Total Pit Duration (ms)",
+            0,
+            150000,
+            45000,
+            timing=True
+        )
+
+
+        avg_lap_time = prediction_slider(
+            "Average Lap Time (ms)",
+            70000,
+            130000,
+            95000,
+            timing=True
+        )
+
+
+        lap_time_std = prediction_slider(
+            "Lap Time Consistency (ms)",
+            0,
+            20000,
+            3000,
+            timing=True
+        )
+
+
+        fastest_lap_time = prediction_slider(
+            "Fastest Lap Time (ms)",
+            60000,
+            120000,
+            85000,
+            timing=True
+        )
+
+
+        total_laps_completed = prediction_slider(
+            "Total Laps Completed",
+            0,
+            80,
+            55
+        )
+
+
+    input_data = pd.DataFrame({
+        "grid": [grid],
+        "qualifying_position": [qualifying_position],
+        "num_pit_stops": [num_pit_stops],
+        "first_pit_lap": [first_pit_lap],
+        "last_pit_lap": [last_pit_lap],
+        "avg_pit_lap": [avg_pit_lap],
+        "avg_pit_duration": [avg_pit_duration],
+        "total_pit_duration": [total_pit_duration],
+        "avg_lap_time": [avg_lap_time],
+        "lap_time_std": [lap_time_std],
+        "fastest_lap_time": [fastest_lap_time],
+        "total_laps_completed": [total_laps_completed]
+    })
+
+
+    for col in model_columns:
+        if col not in input_data.columns:
+            input_data[col] = 0
+
+
+    input_data = input_data[model_columns]
+
+
+    prediction = model.predict(input_data)[0]
+
+
+    st.divider()
+
+
+    st.subheader("Predicted Race Outcome")
+
+
+    st.metric(
+        "Predicted Position Change",
+        round(prediction, 2)
+    )
+
+
+    if prediction > 0:
+
+
+        st.success(
+            f"Driver is predicted to gain approximately {round(prediction,2)} positions."
+        )
+
+
+    elif prediction < 0:
+
+
+        st.error(
+            f"Driver is predicted to lose approximately {abs(round(prediction,2))} positions."
+        )
+
+
+    else:
+
+
+        st.info("Minimal position change predicted.")
+
+# =========================================================
+# PAGE: STRATEGY ANALYSIS
+# =========================================================
+
+elif page == "📊 Strategy Analysis":
+
+    st.header("📊 Strategy Analysis")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        selected_year = st.selectbox(
+            "Season",
+            sorted(df["year"].unique())
+        )
+
+    with col2:
+        selected_constructor = st.selectbox(
+            "Constructor",
+            ["All"] + sorted(df["constructor_name"].dropna().unique().tolist())
+        )
+
+    with col3:
+        selected_pit_stops = st.selectbox(
+            "Pit Stops",
+            ["All"] + sorted(df["num_pit_stops"].dropna().unique().tolist())
+        )
+
+    filtered_df = df[df["year"] == selected_year]
+
+    if selected_constructor != "All":
+        filtered_df = filtered_df[
+            filtered_df["constructor_name"] == selected_constructor
+        ]
+
+    if selected_pit_stops != "All":
+        filtered_df = filtered_df[
+            filtered_df["num_pit_stops"] == selected_pit_stops
+        ]
+
+    st.subheader("Filtered Dataset")
+
+    st.dataframe(
+        filtered_df[
+            [
+                "driver_name",
+                "constructor_name",
+                "grid",
+                "positionOrder",
+                "position_change",
+                "num_pit_stops",
+                "avg_pit_duration"
+            ]
+        ].head(100)
+    )
+
+    st.divider()
+
+    st.subheader("Quick Statistics")
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.metric(
+            "Average Position Change",
+            round(filtered_df["position_change"].mean(), 2)
+        )
+
+    with c2:
+        st.metric(
+            "Average Pit Stops",
+            round(filtered_df["num_pit_stops"].mean(), 2)
+        )
+
+    with c3:
+        avg_pit_ms = filtered_df["avg_pit_duration"].mean()
+        
+        st.metric(
+            "Average Pit Duration",
+            f"{avg_pit_ms:,.0f} ms"
+        )
+        
+        st.caption(
+            f"⏱️ Official Timing Format: {format_f1_time(avg_pit_ms)}"
+        )
+
+# =========================================================
+# PAGE: MODEL PERFORMANCE
+# =========================================================
+
+elif page == "🤖 Model Performance":
+
+    st.header("🤖 Model Performance Dashboard")
+
+    METRICS_PATH = BASE_DIR / "data" / "processed" / "model_metrics.csv"
+    FEATURE_IMPORTANCE_PATH = BASE_DIR / "data" / "processed" / "feature_importance.csv"
+
+    metrics_df = pd.read_csv(METRICS_PATH)
+    feature_importance_df = pd.read_csv(FEATURE_IMPORTANCE_PATH)
+
+    best_model_row = metrics_df.sort_values(by="R2", ascending=False).iloc[0]
+
+    st.markdown("### 🏆 Best Model Summary")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric("Best Model", best_model_row["Model"])
+
+    with c2:
+        st.metric("Best R²", round(best_model_row["R2"], 2))
+
+    with c3:
+        st.metric("Best MAE", round(best_model_row["MAE"], 2))
+
+    with c4:
+        st.metric("Best RMSE", round(best_model_row["RMSE"], 2))
+
+    st.divider()
+
+    st.markdown("### 📊 Model Comparison")
+
+    metric_choice = st.selectbox(
+        "Choose Evaluation Metric",
+        ["R2", "MAE", "RMSE"]
+    )
+
+    sorted_metrics = metrics_df.sort_values(
+        by=metric_choice,
+        ascending=False if metric_choice == "R2" else True
+    )
+
+    st.dataframe(
+        sorted_metrics,
+        width="stretch"
+    )
+
+    st.bar_chart(
+        sorted_metrics.set_index("Model")[metric_choice]
+    )
+
+    st.divider()
+
+    st.markdown("### 🔍 Compare Individual Models")
+
+    selected_model = st.selectbox(
+        "Select Model",
+        metrics_df["Model"].tolist()
+    )
+
+    selected_row = metrics_df[
+        metrics_df["Model"] == selected_model
+    ].iloc[0]
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+        st.metric("MAE", round(selected_row["MAE"], 2))
+
+    with m2:
+        st.metric("RMSE", round(selected_row["RMSE"], 2))
+
+    with m3:
+        st.metric("R²", round(selected_row["R2"], 2))
+
+    if selected_model == best_model_row["Model"]:
+        st.success(
+            f"{selected_model} is currently the strongest model based on R² score."
+        )
+    else:
+        st.info(
+            f"{selected_model} is useful for comparison, but {best_model_row['Model']} performs best overall."
+        )
+
+    st.divider()
+
+    st.markdown("### 🧠 Feature Importance")
+
+    top_features = feature_importance_df.head(15)
+
+    st.bar_chart(
+        top_features.set_index("feature")["importance"]
+    )
+
+    st.caption(
+        "Feature importance is based on the Random Forest model, which helps identify which race and strategy variables contributed most to predictions."
+    )
+
+    st.divider()
+
+    st.markdown("### 🏁 Model Interpretation")
+
+    st.info(
+        """
+        Random Forest achieved the strongest predictive performance, suggesting that Formula 1 race outcomes are influenced by nonlinear relationships between grid position, qualifying performance, lap pace, and pit strategy variables.
+        """
+    )
+
+# =========================================================
+# PAGE: ABOUT
+# =========================================================
+
+elif page == "ℹ️ About Project":
+
+    st.header("ℹ️ About This Project")
+
+    st.write("""
+    ### Research Question
+
+    To what extent can pit stop strategy and race-performance variables
+    predict position changes during a Formula 1 race?
+
+    ### Dataset
+
+    Historical Formula 1 race data including:
+    - pit stops
+    - qualifying results
+    - lap times
+    - constructors
+    - race outcomes
+
+    ### Machine Learning
+
+    Models Used:
+    - Linear Regression
+    - Random Forest Regressor
+
+    ### Main Finding
+
+    Qualifying position strongly influences race outcomes,
+    but pit strategy variables provide substantial additional
+    predictive power.
+    """)
+
+    st.divider()
+
+    st.subheader("GitHub Repository")
+
+    st.code("https://github.com/thomaschung1/F1-Pit-Strategy-Analysis")
